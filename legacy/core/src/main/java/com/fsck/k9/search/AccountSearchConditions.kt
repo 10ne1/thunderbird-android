@@ -18,6 +18,17 @@ fun LocalMessageSearch.limitToDisplayableFolders() {
 }
 
 /**
+ * Modify the supplied [LocalMessageSearch] instance to limit the search to folders shown in the Unified Inbox.
+ */
+fun LocalMessageSearch.limitToUnifiedFolders() {
+    and(
+        MessageSearchField.INTEGRATE,
+        "1",
+        SearchAttribute.EQUALS,
+    )
+}
+
+/**
  * Modify the supplied [LocalMessageSearch] instance to exclude special folders.
  *
  * Currently the following folders are excluded:

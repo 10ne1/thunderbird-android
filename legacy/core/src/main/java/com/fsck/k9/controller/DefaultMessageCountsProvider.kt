@@ -8,6 +8,7 @@ import app.k9mail.legacy.message.controller.SimpleMessagingListener
 import com.fsck.k9.search.excludeSpecialFolders
 import com.fsck.k9.search.getAccounts
 import com.fsck.k9.search.limitToDisplayableFolders
+import com.fsck.k9.search.limitToUnifiedFolders
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -37,6 +38,7 @@ internal class DefaultMessageCountsProvider(
         val search = LocalMessageSearch().apply {
             excludeSpecialFolders(account, outboxFolderId = outboxFolderManager.getOutboxFolderIdSync(account.id))
             limitToDisplayableFolders()
+            limitToUnifiedFolders()
         }
 
         return getMessageCounts(account, search.conditions)
