@@ -52,17 +52,20 @@ class DefaultDisplayFolderRepository(
             includeHiddenFolders = includeHiddenFolders,
             outboxFolderId = outboxFolderId,
         ) { folder ->
+            val folderType = folder.takeIf { it.id == outboxFolderId }?.type?.toFolderType()
+                ?: FolderTypeMapper.folderTypeOf(account, folder.id)
+            // Regular folders left out of the Unified Inbox are for reference only, so show no counts for them.
+            val showCounts = folder.isIntegrate || folderType != FolderType.REGULAR
             DisplayFolder(
                 folder = Folder(
                     id = folder.id,
                     name = folder.name,
-                    type = folder.takeIf { it.id == outboxFolderId }?.type?.toFolderType()
-                        ?: FolderTypeMapper.folderTypeOf(account, folder.id),
+                    type = folderType,
                     isLocalOnly = folder.isLocalOnly,
                 ),
                 isInTopGroup = folder.isInTopGroup,
-                unreadMessageCount = folder.unreadMessageCount,
-                starredMessageCount = folder.starredMessageCount,
+                unreadMessageCount = if (showCounts) folder.unreadMessageCount else 0,
+                starredMessageCount = if (showCounts) folder.starredMessageCount else 0,
                 pathDelimiter = account.folderPathDelimiter,
             )
         }.sortedWith(sortForDisplay)
