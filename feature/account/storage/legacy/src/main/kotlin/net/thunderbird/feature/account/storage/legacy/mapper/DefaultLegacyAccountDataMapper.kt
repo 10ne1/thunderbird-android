@@ -89,6 +89,7 @@ internal class DefaultLegacyAccountDataMapper : LegacyAccountDataMapper {
             isMarkMessageAsReadOnView = dto.isMarkMessageAsReadOnView,
             isMarkMessageAsReadOnDelete = dto.isMarkMessageAsReadOnDelete,
             isAlwaysShowCcBcc = dto.isAlwaysShowCcBcc,
+            isViewOnly = dto.isViewOnly,
             isRemoteSearchFullText = dto.isRemoteSearchFullText,
             remoteSearchNumResults = dto.remoteSearchNumResults,
             isUploadSentMessages = dto.isUploadSentMessages,
@@ -195,6 +196,7 @@ internal class DefaultLegacyAccountDataMapper : LegacyAccountDataMapper {
             isMarkMessageAsReadOnView = domain.isMarkMessageAsReadOnView
             isMarkMessageAsReadOnDelete = domain.isMarkMessageAsReadOnDelete
             isAlwaysShowCcBcc = domain.isAlwaysShowCcBcc
+            isViewOnly = domain.isViewOnly
             isRemoteSearchFullText = domain.isRemoteSearchFullText
             remoteSearchNumResults = domain.remoteSearchNumResults
             isUploadSentMessages = domain.isUploadSentMessages

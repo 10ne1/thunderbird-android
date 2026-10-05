@@ -94,6 +94,7 @@ data class LegacyAccount(
     val isMarkMessageAsReadOnView: Boolean = false,
     val isMarkMessageAsReadOnDelete: Boolean = false,
     val isAlwaysShowCcBcc: Boolean = false,
+    val isViewOnly: Boolean = false,
     val isRemoteSearchFullText: Boolean = false,
     val remoteSearchNumResults: Int = 0,
     val isUploadSentMessages: Boolean = false,

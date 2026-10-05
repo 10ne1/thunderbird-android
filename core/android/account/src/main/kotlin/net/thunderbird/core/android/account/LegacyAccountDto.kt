@@ -352,6 +352,15 @@ open class LegacyAccountDto(
     @set:Synchronized
     var isAlwaysShowCcBcc = false
 
+    /**
+     * The account's folders are views of the mail of other accounts, so it sends nothing itself: a message
+     * written from it is sent from the account it belongs to, and a deleted message is not copied to a Trash
+     * folder first.
+     */
+    @get:Synchronized
+    @set:Synchronized
+    var isViewOnly = false
+
     // Temporarily disabled
     @get:Synchronized
     @set:Synchronized

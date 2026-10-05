@@ -34,6 +34,7 @@ class AccountSettingsDataStore(
             "mark_message_as_read_on_delete" -> account.isMarkMessageAsReadOnDelete
             "account_sync_remote_deletetions" -> account.isSyncRemoteDeletions
             "always_show_cc_bcc" -> account.isAlwaysShowCcBcc
+            "view_only" -> account.isViewOnly
             "message_read_receipt" -> account.isMessageReadReceipt
             "default_quoted_text_shown" -> account.isDefaultQuotedTextShown
             "reply_after_quote" -> account.isReplyAfterQuote
@@ -59,6 +60,7 @@ class AccountSettingsDataStore(
             "mark_message_as_read_on_delete" -> account.isMarkMessageAsReadOnDelete = value
             "account_sync_remote_deletetions" -> account.isSyncRemoteDeletions = value
             "always_show_cc_bcc" -> account.isAlwaysShowCcBcc = value
+            "view_only" -> account.isViewOnly = value
             "message_read_receipt" -> account.isMessageReadReceipt = value
             "default_quoted_text_shown" -> account.isDefaultQuotedTextShown = value
             "reply_after_quote" -> account.isReplyAfterQuote = value

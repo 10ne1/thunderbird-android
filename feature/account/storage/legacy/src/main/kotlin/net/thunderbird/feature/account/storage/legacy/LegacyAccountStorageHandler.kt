@@ -242,6 +242,7 @@ class LegacyAccountStorageHandler(
             isMarkMessageAsReadOnView = storage.getBoolean(keyGen.create("markMessageAsReadOnView"), true)
             isMarkMessageAsReadOnDelete = storage.getBoolean(keyGen.create("markMessageAsReadOnDelete"), true)
             isAlwaysShowCcBcc = storage.getBoolean(keyGen.create("alwaysShowCcBcc"), false)
+            isViewOnly = storage.getBoolean(keyGen.create("viewOnly"), false)
             lastSyncTime = storage.getLong(keyGen.create("lastSyncTime"), 0L)
             lastFolderListRefreshTime = storage.getLong(keyGen.create("lastFolderListRefreshTime"), 0L)
 
@@ -402,6 +403,7 @@ class LegacyAccountStorageHandler(
             editor.putBoolean(keyGen.create("markMessageAsReadOnView"), isMarkMessageAsReadOnView)
             editor.putBoolean(keyGen.create("markMessageAsReadOnDelete"), isMarkMessageAsReadOnDelete)
             editor.putBoolean(keyGen.create("alwaysShowCcBcc"), isAlwaysShowCcBcc)
+            editor.putBoolean(keyGen.create("viewOnly"), isViewOnly)
 
             editor.putBoolean(keyGen.create("vibrate"), notificationSettings.vibration.isEnabled)
             editor.putInt(keyGen.create("vibratePattern"), notificationSettings.vibration.pattern.serialize())
@@ -515,6 +517,7 @@ class LegacyAccountStorageHandler(
         editor.remove(keyGen.create("markMessageAsReadOnView"))
         editor.remove(keyGen.create("markMessageAsReadOnDelete"))
         editor.remove(keyGen.create("alwaysShowCcBcc"))
+        editor.remove(keyGen.create("viewOnly"))
         editor.remove(keyGen.create("remoteSearchFullText"))
         editor.remove(keyGen.create("remoteSearchNumResults"))
         editor.remove(keyGen.create("uploadSentMessages"))

@@ -480,6 +480,8 @@
     <string name="account_settings_message_format_auto">Automatic</string>
 
     <string name="account_settings_always_show_cc_bcc_label">Always show Cc/Bcc</string>
+    <string name="account_settings_view_only_label">View-only account</string>
+    <string name="account_settings_view_only_summary">Its folders show the mail of your other accounts and it sends nothing itself: mail written from it is sent from the account the message belongs to</string>
 
     <string name="account_settings_message_read_receipt_label">Read receipt</string>
     <string name="account_settings_message_read_receipt_summary">Always request a read receipt</string>

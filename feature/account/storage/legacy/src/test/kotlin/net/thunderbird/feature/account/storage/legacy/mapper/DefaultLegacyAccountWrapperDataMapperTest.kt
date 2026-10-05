@@ -128,6 +128,7 @@ class DefaultLegacyAccountWrapperDataMapperTest {
         assertThat(result.isMarkMessageAsReadOnView).isEqualTo(true)
         assertThat(result.isMarkMessageAsReadOnDelete).isEqualTo(true)
         assertThat(result.isAlwaysShowCcBcc).isEqualTo(true)
+        assertThat(result.isViewOnly).isEqualTo(true)
         assertThat(result.isRemoteSearchFullText).isEqualTo(false)
         assertThat(result.remoteSearchNumResults).isEqualTo(17)
         assertThat(result.isUploadSentMessages).isEqualTo(true)
@@ -272,6 +273,7 @@ class DefaultLegacyAccountWrapperDataMapperTest {
                 isMarkMessageAsReadOnView = true
                 isMarkMessageAsReadOnDelete = true
                 isAlwaysShowCcBcc = true
+                isViewOnly = true
                 isRemoteSearchFullText = false
                 remoteSearchNumResults = 17
                 isUploadSentMessages = true
@@ -386,6 +388,7 @@ class DefaultLegacyAccountWrapperDataMapperTest {
                 isMarkMessageAsReadOnView = true,
                 isMarkMessageAsReadOnDelete = true,
                 isAlwaysShowCcBcc = true,
+                isViewOnly = true,
                 isRemoteSearchFullText = false,
                 remoteSearchNumResults = 17,
                 isUploadSentMessages = true,
