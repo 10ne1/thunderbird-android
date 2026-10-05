@@ -3,6 +3,7 @@ package com.fsck.k9.activity;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -98,6 +99,7 @@ import com.fsck.k9.fragment.ProgressDialogFragment.CancelListener;
 import com.fsck.k9.helper.Contacts;
 import com.fsck.k9.helper.CrLfConverter;
 import com.fsck.k9.helper.IdentityHelper;
+import com.fsck.k9.helper.IdentityHelper.AccountIdentity;
 import com.fsck.k9.helper.MailTo;
 import com.fsck.k9.helper.ReplyToParser;
 import com.fsck.k9.helper.SimpleTextWatcher;
@@ -199,6 +201,9 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
     private static final String STATE_ALREADY_NOTIFIED_USER_OF_EMPTY_SUBJECT = "alreadyNotifiedUserOfEmptySubject";
     private static final String STATE_ACTIVE_IN_APP_NOTIFICATIONS =
             "com.fsck.k9.activity.MessageCompose.activeInAppNotifications";
+    private static final String STATE_ACCOUNT = "com.fsck.k9.activity.MessageCompose.account";
+    private static final String STATE_WRITING_FOR_VIEW_ONLY_ACCOUNT =
+            "com.fsck.k9.activity.MessageCompose.writingForViewOnlyAccount";
 
     private static final String FRAGMENT_WAITING_FOR_ATTACHMENT = "waitingForAttachment";
 
@@ -279,6 +284,12 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
 
     private Long draftMessageId = null;
 
+    /**
+     * The message was started from a view-only account, which sends nothing itself, so it is written in the
+     * account the source message belongs to (or the default account) instead.
+     */
+    private boolean writingForViewOnlyAccount = false;
+
     private Action action;
 
     private boolean requestReadReceipt = false;
@@ -335,6 +346,21 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
 
         if (account == null) {
             account = preferences.getDefaultAccount();
+        }
+
+        if (savedInstanceState != null) {
+            // The account written in is not always the one the intent names (see onAccountChosen()).
+            String savedAccountUuid = savedInstanceState.getString(STATE_ACCOUNT);
+            LegacyAccountDto savedAccount = savedAccountUuid != null ? preferences.getAccount(savedAccountUuid) : null;
+            if (savedAccount != null) {
+                account = savedAccount;
+            }
+            writingForViewOnlyAccount = savedInstanceState.getBoolean(STATE_WRITING_FOR_VIEW_ONLY_ACCOUNT);
+        }
+
+        if (account != null && account.isViewOnly()) {
+            writingForViewOnlyAccount = true;
+            account = getDefaultAccountToSendFrom();
         }
 
         if (account == null) {
@@ -718,6 +744,8 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
         outState.putBoolean(STATE_KEY_CHANGES_MADE_SINCE_LAST_SAVE, changesMadeSinceLastSave);
         outState.putBoolean(STATE_ALREADY_NOTIFIED_USER_OF_EMPTY_SUBJECT, alreadyNotifiedUserOfEmptySubject);
         outState.putIntegerArrayList(STATE_ACTIVE_IN_APP_NOTIFICATIONS, new ArrayList<>(activeInAppNotifications));
+        outState.putString(STATE_ACCOUNT, account.getUuid());
+        outState.putBoolean(STATE_WRITING_FOR_VIEW_ONLY_ACCOUNT, writingForViewOnlyAccount);
 
         replyToPresenter.onSaveInstanceState(outState);
         recipientPresenter.onSaveInstanceState(outState);
@@ -1445,6 +1473,11 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
     private void processMessageToReplyTo(MessageViewInfo messageViewInfo) throws MessagingException {
         Message message = messageViewInfo.message;
 
+        // First, so that the recipients leave out that account's identities.
+        if (writingForViewOnlyAccount) {
+            switchToAccountOfMessage(message);
+        }
+
         if (messageViewInfo.subject != null) {
             final String subject = PREFIX.matcher(messageViewInfo.subject).replaceFirst("");
 
@@ -1490,6 +1523,10 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
     private void processMessageToForward(MessageViewInfo messageViewInfo, boolean asAttachment) throws MessagingException {
         Message message = messageViewInfo.message;
 
+        if (writingForViewOnlyAccount) {
+            switchToAccountOfMessage(message);
+        }
+
         String subject = messageViewInfo.subject;
         if (subject != null && !subject.toLowerCase(Locale.US).startsWith("fwd:")) {
             subjectView.setText("Fwd: " + subject);
@@ -1519,6 +1556,11 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
     }
 
     private void setIdentityFromMessage(Message message) {
+        if (writingForViewOnlyAccount) {
+            // switchToAccountOfMessage() chose it, from every account's identities.
+            return;
+        }
+
         Identity useIdentity = IdentityHelper.getRecipientIdentityFromMessage(account, message);
         Identity defaultIdentity = account.getIdentity(0);
         if (useIdentity != defaultIdentity) {
@@ -1526,9 +1568,51 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
         }
     }
 
+    /**
+     * The account to write in when the message was started from a view-only account: the default account, or
+     * else the first one that can send.
+     */
+    private LegacyAccountDto getDefaultAccountToSendFrom() {
+        LegacyAccountDto defaultAccount = preferences.getDefaultAccount();
+        if (defaultAccount != null && !defaultAccount.isViewOnly()) {
+            return defaultAccount;
+        }
+
+        List<LegacyAccountDto> accounts = getAccountsToSendFrom();
+        return accounts.isEmpty() ? null : accounts.get(0);
+    }
+
+    private List<LegacyAccountDto> getAccountsToSendFrom() {
+        List<LegacyAccountDto> accounts = new ArrayList<>();
+        for (LegacyAccountDto candidate : preferences.getAccounts()) {
+            if (!candidate.isViewOnly()) {
+                accounts.add(candidate);
+            }
+        }
+        return accounts;
+    }
+
+    /**
+     * Write in the account a message opened in a view-only account belongs to, as the identity it was sent to
+     * (or from). Nothing has been written yet, so the switch saves no draft.
+     */
+    private void switchToAccountOfMessage(Message message) {
+        AccountIdentity owner = IdentityHelper.findAccountIdentityOfMessage(getAccountsToSendFrom(), message);
+        if (owner != null) {
+            changesMadeSinceLastSave = false;
+            onAccountChosen(owner.getAccount(), owner.getIdentity());
+        }
+    }
+
     private void processDraftMessage(MessageViewInfo messageViewInfo) {
         Message message = messageViewInfo.message;
-        draftMessageId = messagingController.getId(message);
+        if (writingForViewOnlyAccount) {
+            // Its id is one in the view-only account's store, which must not be taken for one in the store of
+            // the account written in, where it would name some other message: write it as a new draft.
+            draftMessageId = null;
+        } else {
+            draftMessageId = messagingController.getId(message);
+        }
         subjectView.setText(messageViewInfo.subject);
 
         replyToPresenter.initFromDraftMessage(message);

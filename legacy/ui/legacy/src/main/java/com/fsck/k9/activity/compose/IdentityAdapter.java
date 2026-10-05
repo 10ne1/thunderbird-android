@@ -40,6 +40,10 @@ public class IdentityAdapter extends BaseAdapter {
         Preferences prefs = Preferences.getPreferences();
         Collection<LegacyAccountDto> accounts = prefs.getAccounts();
         for (LegacyAccountDto account : accounts) {
+            // A view-only account sends nothing itself.
+            if (account.isViewOnly()) {
+                continue;
+            }
             items.add(account);
             List<Identity> identities = account.getIdentities();
             for (Identity identity : identities) {

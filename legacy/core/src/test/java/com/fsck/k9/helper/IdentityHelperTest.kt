@@ -2,6 +2,7 @@ package com.fsck.k9.helper
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import com.fsck.k9.mail.Address
 import com.fsck.k9.mail.Message
 import com.fsck.k9.mail.Message.RecipientType
@@ -115,6 +116,75 @@ class IdentityHelperTest : RobolectricTest() {
         assertThat(identity.email).isEqualTo(DEFAULT_ADDRESS)
     }
 
+    @Test
+    fun findAccountIdentityOfMessage_findsTheAccountTheMessageWasSentTo() {
+        val other = otherAccount()
+        val message = messageWithRecipients(
+            RecipientType.TO to "unrelated1@example.org",
+            RecipientType.CC to OTHER_ADDRESS,
+            RecipientType.DELIVERED_TO to IDENTITY_1_ADDRESS,
+        )
+
+        val result = IdentityHelper.findAccountIdentityOfMessage(listOf(account, other), message)
+
+        assertThat(result?.account).isEqualTo(other)
+        assertThat(result?.identity?.email).isEqualTo(OTHER_ADDRESS)
+    }
+
+    @Test
+    fun findAccountIdentityOfMessage_prefersTheEarlierAccountForTheSameAddress() {
+        val other = otherAccount(IDENTITY_2_ADDRESS)
+        val message = messageWithRecipients(RecipientType.TO to IDENTITY_2_ADDRESS)
+
+        val result = IdentityHelper.findAccountIdentityOfMessage(listOf(other, account), message)
+
+        assertThat(result?.account).isEqualTo(other)
+    }
+
+    @Test
+    fun findAccountIdentityOfMessage_fallsBackToTheSender() {
+        val other = otherAccount()
+        val message = messageFrom(
+            OTHER_ADDRESS,
+            RecipientType.TO to "unrelated1@example.org",
+        )
+
+        val result = IdentityHelper.findAccountIdentityOfMessage(listOf(account, other), message)
+
+        assertThat(result?.account).isEqualTo(other)
+        assertThat(result?.identity?.email).isEqualTo(OTHER_ADDRESS)
+    }
+
+    @Test
+    fun findAccountIdentityOfMessage_prefersRecipientsOverTheSender() {
+        val other = otherAccount()
+        val message = messageFrom(
+            OTHER_ADDRESS,
+            RecipientType.TO to IDENTITY_3_ADDRESS,
+        )
+
+        val result = IdentityHelper.findAccountIdentityOfMessage(listOf(account, other), message)
+
+        assertThat(result?.account).isEqualTo(account)
+        assertThat(result?.identity?.email).isEqualTo(IDENTITY_3_ADDRESS)
+    }
+
+    @Test
+    fun findAccountIdentityOfMessage_withoutAnyIdentityAddresses_returnsNull() {
+        val message = messageFrom(
+            "sender@example.org",
+            RecipientType.TO to "unrelated1@example.org",
+        )
+
+        val result = IdentityHelper.findAccountIdentityOfMessage(listOf(account, otherAccount()), message)
+
+        assertThat(result).isNull()
+    }
+
+    private fun otherAccount(address: String = OTHER_ADDRESS) = LegacyAccountDto(UUID.randomUUID().toString()).apply {
+        replaceIdentities(listOf(newIdentity("Other", address)))
+    }
+
     private fun createDummyAccount() = LegacyAccountDto(UUID.randomUUID().toString()).apply {
         replaceIdentities(
             listOf(
@@ -132,6 +202,12 @@ class IdentityHelperTest : RobolectricTest() {
         name = name,
         email = email,
     )
+
+    private fun messageFrom(from: String, vararg recipients: Pair<RecipientType, String>): Message {
+        return messageWithRecipients(*recipients).apply {
+            addHeader("From", AddressHeaderBuilder.createHeaderValue(arrayOf(Address(from))))
+        }
+    }
 
     private fun messageWithRecipients(vararg recipients: Pair<RecipientType, String>): Message {
         return MimeMessage().apply {
@@ -158,5 +234,6 @@ class IdentityHelperTest : RobolectricTest() {
         const val IDENTITY_3_ADDRESS = "identity3@example.org"
         const val IDENTITY_4_ADDRESS = "identity4@example.org"
         const val IDENTITY_5_ADDRESS = "identity5@example.org"
+        const val OTHER_ADDRESS = "other@example.net"
     }
 }
