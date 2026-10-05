@@ -53,6 +53,15 @@ object IdentityHelper {
         return findAccountIdentity(accounts, message.recipientAddresses() + message.senderAddresses())
     }
 
+    /**
+     * Like [findAccountIdentityOfMessage], but for a draft, which belongs to the identity it is written as: the
+     * sender is looked at first.
+     */
+    @JvmStatic
+    fun findAccountIdentityOfDraft(accounts: List<LegacyAccountDto>, message: Message): AccountIdentity? {
+        return findAccountIdentity(accounts, message.senderAddresses() + message.recipientAddresses())
+    }
+
     private fun findAccountIdentity(accounts: List<LegacyAccountDto>, addresses: Sequence<Address>): AccountIdentity? {
         return addresses
             .mapNotNull { address ->

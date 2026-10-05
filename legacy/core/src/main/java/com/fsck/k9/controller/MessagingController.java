@@ -2558,6 +2558,30 @@ public class MessagingController implements MessagingControllerRegistry, Messagi
         }
     }
 
+    /**
+     * The local id of the message with the given Message-ID in the account's Drafts folder, or {@code null} if
+     * the account has no Drafts folder or no such message has been synced into it.
+     */
+    public Long findDraftId(LegacyAccountDto account, String messageId) {
+        Long draftsFolderId = account.getDraftsFolderId();
+        if (draftsFolderId == null || messageId == null) {
+            return null;
+        }
+
+        try {
+            LocalMessageSearch search = new LocalMessageSearch();
+            search.addAllowedFolder(draftsFolderId);
+            for (LocalMessage message : localStoreProvider.getInstance(account).searchForMessages(search)) {
+                if (messageId.equals(message.getMessageId())) {
+                    return message.getDatabaseId();
+                }
+            }
+        } catch (MessagingException e) {
+            Log.e(e, "Error looking for a draft in %s", account);
+        }
+        return null;
+    }
+
     private static AtomicInteger sequencing = new AtomicInteger(0);
 
     private static class Command implements Comparable<Command> {

@@ -181,6 +181,20 @@ class IdentityHelperTest : RobolectricTest() {
         assertThat(result).isNull()
     }
 
+    @Test
+    fun findAccountIdentityOfDraft_prefersTheSender() {
+        val other = otherAccount()
+        val message = messageFrom(
+            OTHER_ADDRESS,
+            RecipientType.TO to IDENTITY_3_ADDRESS,
+        )
+
+        val result = IdentityHelper.findAccountIdentityOfDraft(listOf(account, other), message)
+
+        assertThat(result?.account).isEqualTo(other)
+        assertThat(result?.identity?.email).isEqualTo(OTHER_ADDRESS)
+    }
+
     private fun otherAccount(address: String = OTHER_ADDRESS) = LegacyAccountDto(UUID.randomUUID().toString()).apply {
         replaceIdentities(listOf(newIdentity("Other", address)))
     }

@@ -78,6 +78,8 @@ import com.fsck.k9.activity.compose.ComposeCryptoStatus;
 import com.fsck.k9.activity.compose.ComposeCryptoStatus.SendErrorState;
 import com.fsck.k9.activity.compose.IdentityAdapter;
 import com.fsck.k9.activity.compose.IdentityAdapter.IdentityContainer;
+import com.fsck.k9.activity.compose.ViewOnlyDraftResume;
+import com.fsck.k9.activity.compose.ViewOnlyDrafts;
 import com.fsck.k9.activity.compose.PgpEnabledErrorDialog.OnOpenPgpDisableListener;
 import com.fsck.k9.activity.compose.PgpInlineDialog.OnOpenPgpInlineChangeListener;
 import com.fsck.k9.activity.compose.PgpSignOnlyDialog.OnOpenPgpSignOnlyChangeListener;
@@ -204,6 +206,8 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
     private static final String STATE_ACCOUNT = "com.fsck.k9.activity.MessageCompose.account";
     private static final String STATE_WRITING_FOR_VIEW_ONLY_ACCOUNT =
             "com.fsck.k9.activity.MessageCompose.writingForViewOnlyAccount";
+    private static final String STATE_VIEW_ONLY_DRAFT_TO_DELETE =
+            "com.fsck.k9.activity.MessageCompose.viewOnlyDraftToDelete";
 
     private static final String FRAGMENT_WAITING_FOR_ATTACHMENT = "waitingForAttachment";
 
@@ -289,6 +293,13 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
      * account the source message belongs to (or the default account) instead.
      */
     private boolean writingForViewOnlyAccount = false;
+
+    /**
+     * A draft resumed from a view-only account that is not in the Drafts folder of its own account here, so
+     * it is saved there as a new draft: the copy seen through the view-only account is deleted once that is
+     * saved or sent.
+     */
+    private MessageReference viewOnlyDraftToDelete = null;
 
     private Action action;
 
@@ -746,6 +757,9 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
         outState.putIntegerArrayList(STATE_ACTIVE_IN_APP_NOTIFICATIONS, new ArrayList<>(activeInAppNotifications));
         outState.putString(STATE_ACCOUNT, account.getUuid());
         outState.putBoolean(STATE_WRITING_FOR_VIEW_ONLY_ACCOUNT, writingForViewOnlyAccount);
+        if (viewOnlyDraftToDelete != null) {
+            outState.putString(STATE_VIEW_ONLY_DRAFT_TO_DELETE, viewOnlyDraftToDelete.toIdentityString());
+        }
 
         replyToPresenter.onSaveInstanceState(outState);
         recipientPresenter.onSaveInstanceState(outState);
@@ -781,6 +795,7 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
         }
         identity = BundleCompat.getParcelable(savedInstanceState, STATE_IDENTITY, Identity.class);
         identityChanged = savedInstanceState.getBoolean(STATE_IDENTITY_CHANGED);
+        viewOnlyDraftToDelete = MessageReference.parse(savedInstanceState.getString(STATE_VIEW_ONLY_DRAFT_TO_DELETE));
         repliedToMessageId = savedInstanceState.getString(STATE_IN_REPLY_TO);
         referencedMessageIds = savedInstanceState.getString(STATE_REFERENCES);
         changesMadeSinceLastSave = savedInstanceState.getBoolean(STATE_KEY_CHANGES_MADE_SINCE_LAST_SAVE);
@@ -1604,12 +1619,41 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
         }
     }
 
+    /**
+     * Resume a draft opened in a view-only account in the account it belongs to (see ViewOnlyDrafts). The
+     * draft's id in the view-only account's store must never become draftMessageId, an id in the store of the
+     * account written in, where it would name some other message.
+     */
+    private void resumeDraftInItsAccount(Message message) {
+        MessageReference viewOnlyReference = relatedMessageReference;
+        relatedMessageReference = null;
+        draftMessageId = null;
+
+        ViewOnlyDraftResume resume = ViewOnlyDrafts.resume(getAccountsToSendFrom(), account, message,
+                messagingController::findDraftId);
+        AccountIdentity owner = resume.getOwner();
+        if (owner != null) {
+            changesMadeSinceLastSave = false;
+            onAccountChosen(owner.getAccount(), owner.getIdentity());
+        }
+
+        draftMessageId = resume.getDraftId();
+        if (resume.getDeleteViewOnlyCopy()) {
+            viewOnlyDraftToDelete = viewOnlyReference;
+        }
+    }
+
+    private void deleteViewOnlyDraftCopy() {
+        if (viewOnlyDraftToDelete != null) {
+            messagingController.deleteMessages(Collections.singletonList(viewOnlyDraftToDelete));
+            viewOnlyDraftToDelete = null;
+        }
+    }
+
     private void processDraftMessage(MessageViewInfo messageViewInfo) {
         Message message = messageViewInfo.message;
         if (writingForViewOnlyAccount) {
-            // Its id is one in the view-only account's store, which must not be taken for one in the store of
-            // the account written in, where it would name some other message: write it as a new draft.
-            draftMessageId = null;
+            resumeDraftInItsAccount(message);
         } else {
             draftMessageId = messagingController.getId(message);
         }
@@ -1835,6 +1879,7 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
 
             new SaveMessageTask(messagingController, account, internalMessageHandler, message, draftMessageId,
                     plaintextSubject).execute();
+            deleteViewOnlyDraftCopy();
             if (finishAfterDraftSaved) {
                 finish();
             } else {
@@ -1844,6 +1889,7 @@ public class MessageCompose extends BaseActivity implements OnClickListener,
             currentMessageBuilder = null;
             new SendMessageTask(messagingController, preferences, account, contacts, message,
                     draftMessageId, plaintextSubject, relatedMessageReference, relatedFlag).execute();
+            deleteViewOnlyDraftCopy();
             finish();
         }
     }

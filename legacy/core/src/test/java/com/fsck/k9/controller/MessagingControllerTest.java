@@ -2,6 +2,7 @@ package com.fsck.k9.controller;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -45,12 +46,14 @@ import net.thunderbird.feature.mail.message.list.LocalMessageUidPrefixProvider;
 import net.thunderbird.feature.notification.api.NotificationManager;
 import net.thunderbird.feature.notification.testing.fake.FakeInAppOnlyNotification;
 import net.thunderbird.feature.notification.testing.fake.FakeNotificationManager;
+import net.thunderbird.feature.search.legacy.LocalMessageSearch;
 import net.thunderbird.legacy.core.StubLocalDeleteOperationDecider;
 import net.thunderbird.legacy.core.mailstore.folder.FakeLocalMessageUidPrefixProvider;
 import net.thunderbird.legacy.core.mailstore.folder.FakeOutboxFolderManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
@@ -61,6 +64,9 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.shadows.ShadowLog;
 
 import static java.util.Collections.emptyList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.ArgumentMatchers.eq;
@@ -79,6 +85,7 @@ public class MessagingControllerTest extends K9RobolectricTest {
     private static final long FOLDER_ID = 23;
     private static final String FOLDER_NAME = "Folder";
     private static final long SENT_FOLDER_ID = 10;
+    private static final long DRAFTS_FOLDER_ID = 11;
     private static final int MAXIMUM_SMALL_MESSAGE_SIZE = 1000;
 
     private MessagingController controller;
@@ -426,6 +433,45 @@ public class MessagingControllerTest extends K9RobolectricTest {
 
     private void configureBackendManager() {
         when(backendManager.getBackend(account.getUuid())).thenReturn(backend);
+    }
+
+    @Test
+    public void findDraftId_returnsTheDraftWithThatMessageIdInTheDraftsFolder() throws Exception {
+        account.setDraftsFolderId(DRAFTS_FOLDER_ID);
+        LocalMessage other = draft(31L, "<other@example.org>");
+        LocalMessage wanted = draft(32L, "<wanted@example.org>");
+        when(localStore.searchForMessages(any(LocalMessageSearch.class))).thenReturn(Arrays.asList(other, wanted));
+
+        Long result = controller.findDraftId(account, "<wanted@example.org>");
+
+        assertEquals(Long.valueOf(32L), result);
+        ArgumentCaptor<LocalMessageSearch> search = ArgumentCaptor.forClass(LocalMessageSearch.class);
+        verify(localStore).searchForMessages(search.capture());
+        assertEquals(Collections.singletonList(DRAFTS_FOLDER_ID), search.getValue().getFolderIds());
+    }
+
+    @Test
+    public void findDraftId_withoutSuchDraft_returnsNull() throws Exception {
+        account.setDraftsFolderId(DRAFTS_FOLDER_ID);
+        LocalMessage other = draft(31L, "<other@example.org>");
+        when(localStore.searchForMessages(any(LocalMessageSearch.class))).thenReturn(Collections.singletonList(other));
+
+        assertNull(controller.findDraftId(account, "<wanted@example.org>"));
+    }
+
+    @Test
+    public void findDraftId_withoutDraftsFolder_returnsNull() throws Exception {
+        account.setDraftsFolderId(null);
+
+        assertNull(controller.findDraftId(account, "<wanted@example.org>"));
+        verify(localStore, never()).searchForMessages(any(LocalMessageSearch.class));
+    }
+
+    private LocalMessage draft(long databaseId, String messageId) {
+        LocalMessage message = mock(LocalMessage.class);
+        when(message.getDatabaseId()).thenReturn(databaseId);
+        when(message.getMessageId()).thenReturn(messageId);
+        return message;
     }
 
     private void configureAccount() {
