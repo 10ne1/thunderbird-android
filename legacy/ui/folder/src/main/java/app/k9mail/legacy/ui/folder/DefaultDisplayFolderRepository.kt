@@ -54,8 +54,9 @@ class DefaultDisplayFolderRepository(
         ) { folder ->
             val folderType = folder.takeIf { it.id == outboxFolderId }?.type?.toFolderType()
                 ?: FolderTypeMapper.folderTypeOf(account, folder.id)
-            // Regular folders left out of the Unified Inbox are for reference only, so show no counts for them.
-            val showCounts = folder.isIntegrate || folderType != FolderType.REGULAR
+            // A folder in the Unified Inbox is mail to read, so it counts what is unread. Any other folder
+            // (Sent, Trash, a folder kept for reference) counts everything in it, as the Outbox always did.
+            val messageCount = if (folder.isIntegrate) folder.unreadMessageCount else folder.totalMessageCount
             DisplayFolder(
                 folder = Folder(
                     id = folder.id,
@@ -64,8 +65,8 @@ class DefaultDisplayFolderRepository(
                     isLocalOnly = folder.isLocalOnly,
                 ),
                 isInTopGroup = folder.isInTopGroup,
-                unreadMessageCount = if (showCounts) folder.unreadMessageCount else 0,
-                starredMessageCount = if (showCounts) folder.starredMessageCount else 0,
+                unreadMessageCount = messageCount,
+                starredMessageCount = folder.starredMessageCount,
                 pathDelimiter = account.folderPathDelimiter,
             )
         }.sortedWith(sortForDisplay)

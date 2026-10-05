@@ -82,6 +82,11 @@ SELECT ${FOLDER_COLUMNS.joinToString()}, (
   WHERE messages.folder_id = folders.id
     AND messages.empty = 0 AND messages.deleted = 0
     AND messages.flagged = 1
+), (
+  SELECT COUNT(messages.id)
+  FROM messages
+  WHERE messages.folder_id = folders.id
+    AND messages.empty = 0 AND messages.deleted = 0
 )
 FROM folders
 $displayModeSelection
@@ -244,6 +249,9 @@ private class CursorFolderAccessor(val cursor: Cursor) : FolderDetailsAccessor {
 
     override val starredMessageCount: Int
         get() = cursor.getInt(15)
+
+    override val totalMessageCount: Int
+        get() = cursor.getInt(16)
 
     override fun serverIdOrThrow(): String {
         return serverId ?: error("No server ID found for folder '$name' ($id)")

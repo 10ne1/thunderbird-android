@@ -23,6 +23,7 @@ interface FolderDetailsAccessor {
     val lastChecked: Long?
     val unreadMessageCount: Int
     val starredMessageCount: Int
+    val totalMessageCount: Int
 
     fun serverIdOrThrow(): String
 }

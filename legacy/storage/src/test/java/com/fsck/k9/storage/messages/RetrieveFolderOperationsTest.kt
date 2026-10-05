@@ -294,6 +294,31 @@ class RetrieveFolderOperationsTest : RobolectricTest() {
     }
 
     @Test
+    fun `get display folders with total message count`() {
+        val folderId1 = sqliteDatabase.createFolder(name = "Folder 1")
+        val folderId2 = sqliteDatabase.createFolder(name = "Folder 2")
+        sqliteDatabase.createMessage(uid = "msg1", folderId = folderId1, read = true)
+        sqliteDatabase.createMessage(uid = "msg2", folderId = folderId1, read = false)
+        sqliteDatabase.createMessage(uid = "msg3", folderId = folderId1, read = true, flagged = true)
+        sqliteDatabase.createMessage(uid = "msg4", folderId = folderId1, deleted = true)
+        sqliteDatabase.createMessage(uid = "msg5", folderId = folderId1, empty = true)
+
+        val result = retrieveFolderOperations.getDisplayFolders(
+            includeHiddenFolders = true,
+            outboxFolderId = null,
+        ) { folder ->
+            Triple(folder.id, folder.unreadMessageCount, folder.totalMessageCount)
+        }
+
+        assertThat(result.toSet()).isEqualTo(
+            setOf(
+                Triple(folderId1, 1, 3),
+                Triple(folderId2, 0, 0),
+            ),
+        )
+    }
+
+    @Test
     fun `get folder id`() {
         val (_, folderId2) = listOf(
             sqliteDatabase.createFolder(serverId = "folder1"),
