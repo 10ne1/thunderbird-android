@@ -44,6 +44,15 @@ class LocalDeleteOperationDeciderTest {
         assertThat(result).isTrue()
     }
 
+    @Test
+    fun `delete message from regular folder of a view-only account`() {
+        account.isViewOnly = true
+
+        val result = localDeleteOperationDecider.isDeleteImmediately(account, REGULAR_FOLDER_ID)
+
+        assertThat(result).isTrue()
+    }
+
     companion object {
         private const val REGULAR_FOLDER_ID = 1L
         private const val SPAM_FOLDER_ID = 2L

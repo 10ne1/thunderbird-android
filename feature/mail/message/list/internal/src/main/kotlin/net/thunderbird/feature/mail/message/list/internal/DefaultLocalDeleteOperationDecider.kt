@@ -13,6 +13,12 @@ internal class DefaultLocalDeleteOperationDecider : LocalDeleteOperationDecider 
             return true
         }
 
+        // A view-only account's folders show other accounts' mail, and the server moves a message deleted there to
+        // the Trash of the account it belongs to. A copy to this account's Trash first would be a second one.
+        if (account.isViewOnly) {
+            return true
+        }
+
         // Deleting messages from the trash folder will delete them immediately.
         val isTrashFolder = folderId == account.trashFolderId
 
